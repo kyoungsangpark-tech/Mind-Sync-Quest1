@@ -8,7 +8,7 @@ export const generateQuest = async (
   moodLabel: string,
   history: UserHistory[]
 ): Promise<QuestResult> => {
-  // process.env.API_KEY는 vite.config.ts의 define에 의해 실제 값으로 치환됩니다.
+  // vite.config.ts의 define 설정에 의해 실제 값으로 치환됩니다.
   const apiKey = process.env.API_KEY;
   
   if (!apiKey || apiKey === '') {
@@ -16,7 +16,7 @@ export const generateQuest = async (
     throw new Error("API_KEY_NOT_CONFIGURED");
   }
 
-  // 가이드라인: 반드시 new GoogleGenAI({ apiKey: process.env.API_KEY }) 형태를 사용
+  // 가이드라인에 따라 new GoogleGenAI({ apiKey: process.env.API_KEY }) 형태 사용
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const mbtiString = `${mbti.E ? 'E' : 'I'}${mbti.S ? 'S' : 'N'}${mbti.T ? 'T' : 'F'}${mbti.J ? 'J' : 'P'}`;
@@ -45,7 +45,7 @@ export const generateQuest = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-flash-latest", // 요청하신 계열의 최신 모델로 변경
       contents: [{ parts: [{ text: prompt }] }],
       config: {
         systemInstruction: "당신은 세계 최고의 긍정 심리학자이자 MBTI 전문가입니다. 사용자의 상황에 맞는 '1분 마인드 처방전'을 JSON 형태로 제공합니다.",
