@@ -2,16 +2,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { MBTIState, Situation, QuestResult, UserHistory } from "../types";
 
-/**
- * Uses Gemini AI to generate a hyper-contextualized 1-minute micro-quest.
- */
 export const generateQuest = async (
   mbti: MBTIState,
   situation: Situation,
   moodLabel: string,
   history: UserHistory[]
 ): Promise<QuestResult> => {
-  // Always initialize a fresh GoogleGenAI instance to pick up the correct API key from process.env.API_KEY
+  // 가이드라인: 반드시 new GoogleGenAI({ apiKey: process.env.API_KEY }) 형태를 사용
+  // vite.config.ts의 define 설정에 의해 브라우저에서 실제 키로 치환됩니다.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const mbtiString = `${mbti.E ? 'E' : 'I'}${mbti.S ? 'S' : 'N'}${mbti.T ? 'T' : 'F'}${mbti.J ? 'J' : 'P'}`;
@@ -19,56 +17,67 @@ export const generateQuest = async (
   const hour = now.getHours();
 
   let timeTheme = "";
-  if (hour >= 5 && hour < 11) timeTheme = "활력/확언";
-  else if (hour >= 11 && hour < 18) timeTheme = "감각 환기";
-  else if (hour >= 18 && hour < 22) timeTheme = "이완/성찰";
-  else timeTheme = "정적/뇌 비우기";
+  if (hour >= 5 && hour < 11) timeTheme = "활력과 확언";
+  else if (hour >= 11 && hour < 18) timeTheme = "감각 환기와 집중력";
+  else if (hour >= 18 && hour < 22) timeTheme = "이완과 하루 성찰";
+  else timeTheme = "정적 휴식과 마인드풀니스";
 
   const prompt = `
-    당신은 세계 최고의 긍정 심리학자입니다. 사용자의 MBTI(${mbtiString}), 장소(${situation}), 기분(${moodLabel})을 바탕으로 1분 마이크로 퀘스트를 설계하세요.
-    
-    [심리학 가이드라인]
-    1. 즉각성: 지금 바로 할 수 있어야 함.
-    2. 감각 자극: 시각, 청각, 촉각 등 오감 활용.
-    3. 근거(Rationale): 이 행동이 왜 기분을 바꿔주는지 과학적/심리학적 근거 제시.
-    4. 테마: 현재 시각에 맞춘 ${timeTheme} 성격.
+    사용자 프로필:
+    - MBTI: ${mbtiString}
+    - 현재 장소: ${situation}
+    - 현재 기분: ${moodLabel}
+    - 현재 시간 테마: ${timeTheme}
 
-    Output JSON: { title, instruction, encouragement, tag, questType, rationale }
+    요구사항:
+    1. 1분 이내에 즉시 수행 가능한 마이크로 퀘스트를 설계하세요.
+    2. 사용자의 MBTI 특성을 적극 반영하세요 (예: I형은 내면 집중, E형은 가벼운 행동 유도).
+    3. 별도의 도구 없이 ${situation}에서 즉시 실행 가능한 동작이어야 합니다.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
+      model: "gemini-3-flash-preview", // 최신 안정화 모델 사용
+      contents: [{ parts: [{ text: prompt }] }],
       config: {
+        systemInstruction: "당신은 세계 최고의 긍정 심리학자이자 MBTI 전문가입니다. 다정하면서도 위트 있는 말투로 사용자에게 딱 맞는 1분 처방전을 JSON 형태로 제공합니다.",
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            title: { type: Type.STRING },
-            instruction: { type: Type.STRING },
-            encouragement: { type: Type.STRING },
-            tag: { type: Type.STRING },
-            questType: { type: Type.STRING },
-            rationale: { type: Type.STRING },
+            title: { type: Type.STRING, description: "퀘스트 제목" },
+            instruction: { type: Type.STRING, description: "행동 지침" },
+            encouragement: { type: Type.STRING, description: "응원 메시지" },
+            tag: { type: Type.STRING, description: "핵심 키워드" },
+            questType: { type: Type.STRING, description: "퀘스트 유형" },
+            rationale: { type: Type.STRING, description: "심리학적 근거" },
           },
           required: ["title", "instruction", "encouragement", "tag", "questType", "rationale"],
         },
       },
     });
 
-    // Directly access the .text property from GenerateContentResponse
-    return { ...JSON.parse(response.text || '{}'), id: 'ai_' + Date.now() } as QuestResult;
+    // 가이드라인: .text() 메서드가 아닌 .text 프로퍼티를 직접 호출
+    const resultText = response.text; 
+    if (!resultText) throw new Error("EMPTY_RESPONSE");
+
+    return { 
+      ...JSON.parse(resultText), 
+      id: 'ai_' + Date.now(),
+      isAiGenerated: true 
+    } as QuestResult;
   } catch (error) {
-    console.error("AI Quest generation error:", error);
+    console.error("Gemini API Error:", error);
+    // API 장애 시 사용자 경험을 보호하기 위한 폴백
     return {
-      id: 'default',
-      title: "가벼운 호흡",
-      instruction: "3번 크게 심호흡하세요.",
-      encouragement: "좋습니다. 당신은 잘하고 있어요.",
-      tag: "Refresh",
+      id: 'fallback_' + Date.now(),
+      title: "마음 한 조각 숨쉬기",
+      instruction: "3초간 숨을 깊게 들이마시고, 5초간 천천히 내뱉으며 어깨의 긴장을 풀어보세요.",
+      encouragement: "잠시의 호흡만으로도 당신의 뇌는 휴식을 얻습니다.",
+      tag: "Relax",
       questType: "breathing",
-      rationale: "심호흡은 부교감 신경을 즉각 자극하여 평온함을 가져다줍니다."
+      rationale: "의도적인 긴 호흡은 부교감 신경을 활성화하여 스트레스 수치를 낮춥니다.",
+      isAiGenerated: false
     };
   }
 };
