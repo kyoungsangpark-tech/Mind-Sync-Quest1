@@ -8,8 +8,7 @@ export const generateQuest = async (
   moodLabel: string,
   history: UserHistory[]
 ): Promise<QuestResult> => {
-  // 가이드라인: 반드시 new GoogleGenAI({ apiKey: process.env.API_KEY }) 형태를 사용
-  // vite.config.ts의 define 설정에 의해 브라우저에서 실제 키로 치환됩니다.
+  // 가이드라인 준수: 반드시 new GoogleGenAI({ apiKey: process.env.API_KEY }) 사용
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const mbtiString = `${mbti.E ? 'E' : 'I'}${mbti.S ? 'S' : 'N'}${mbti.T ? 'T' : 'F'}${mbti.J ? 'J' : 'P'}`;
@@ -31,35 +30,36 @@ export const generateQuest = async (
 
     요구사항:
     1. 1분 이내에 즉시 수행 가능한 마이크로 퀘스트를 설계하세요.
-    2. 사용자의 MBTI 특성을 적극 반영하세요 (예: I형은 내면 집중, E형은 가벼운 행동 유도).
+    2. 사용자의 MBTI 특성을 적극 반영하세요 (예: I형은 내적 성찰, E형은 가벼운 행동 유도).
     3. 별도의 도구 없이 ${situation}에서 즉시 실행 가능한 동작이어야 합니다.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview", // 최신 안정화 모델 사용
-      contents: [{ parts: [{ text: prompt }] }],
+      model: "gemini-3-flash-preview", // 텍스트 기반 태스크에 가장 권장되는 모델
+      // 가이드라인에 따라 단순 텍스트 프롬프트 사용
+      contents: prompt,
       config: {
-        systemInstruction: "당신은 세계 최고의 긍정 심리학자이자 MBTI 전문가입니다. 다정하면서도 위트 있는 말투로 사용자에게 딱 맞는 1분 처방전을 JSON 형태로 제공합니다.",
+        systemInstruction: "당신은 세계 최고의 긍정 심리학자이자 MBTI 전문가입니다. 사용자의 상황에 맞는 '1분 마인드 처방전'을 JSON 형태로 제공합니다.",
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            title: { type: Type.STRING, description: "퀘스트 제목" },
-            instruction: { type: Type.STRING, description: "행동 지침" },
-            encouragement: { type: Type.STRING, description: "응원 메시지" },
-            tag: { type: Type.STRING, description: "핵심 키워드" },
-            questType: { type: Type.STRING, description: "퀘스트 유형" },
-            rationale: { type: Type.STRING, description: "심리학적 근거" },
+            title: { type: Type.STRING },
+            instruction: { type: Type.STRING },
+            encouragement: { type: Type.STRING },
+            tag: { type: Type.STRING },
+            questType: { type: Type.STRING },
+            rationale: { type: Type.STRING },
           },
           required: ["title", "instruction", "encouragement", "tag", "questType", "rationale"],
         },
       },
     });
 
-    // 가이드라인: .text() 메서드가 아닌 .text 프로퍼티를 직접 호출
-    const resultText = response.text; 
-    if (!resultText) throw new Error("EMPTY_RESPONSE");
+    // 가이드라인: .text() 메서드가 아닌 .text 프로퍼티 사용
+    const resultText = response.text;
+    if (!resultText) throw new Error("EMPTY_AI_RESPONSE");
 
     return { 
       ...JSON.parse(resultText), 
@@ -67,8 +67,8 @@ export const generateQuest = async (
       isAiGenerated: true 
     } as QuestResult;
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    // API 장애 시 사용자 경험을 보호하기 위한 폴백
+    console.error("Gemini API Error details:", error);
+    // 폴백 퀘스트 (사용자 경험 보호)
     return {
       id: 'fallback_' + Date.now(),
       title: "마음 한 조각 숨쉬기",
@@ -76,7 +76,7 @@ export const generateQuest = async (
       encouragement: "잠시의 호흡만으로도 당신의 뇌는 휴식을 얻습니다.",
       tag: "Relax",
       questType: "breathing",
-      rationale: "의도적인 긴 호흡은 부교감 신경을 활성화하여 스트레스 수치를 낮춥니다.",
+      rationale: "의도적인 긴 호흡은 부교감 신경을 즉각적으로 활성화하여 스트레스를 낮춥니다.",
       isAiGenerated: false
     };
   }
