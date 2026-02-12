@@ -1,8 +1,8 @@
-
 import React from 'react';
 import { QuestResult } from '../types';
 import { motion } from 'framer-motion';
 import { CheckCircle, Share2, Sparkles, Zap, Info, Wand2 } from 'lucide-react';
+import AdSenseSlot from './AdSenseSlot';
 
 interface Props {
   quest: QuestResult;
@@ -14,9 +14,9 @@ const QuestCard: React.FC<Props> = ({ quest, onComplete }) => {
     <motion.div 
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="w-full max-w-md relative group"
+      className="w-full max-w-md relative group flex flex-col gap-6"
     >
-      {/* AI Quest Glow Effect: 세련된 다이내믹 글로우로 '스페셜'함 강조 */}
+      {/* AI Quest Glow Effect */}
       {quest.isAiGenerated && (
         <div className="absolute -inset-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-[2.6rem] blur-xl opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
       )}
@@ -61,7 +61,7 @@ const QuestCard: React.FC<Props> = ({ quest, onComplete }) => {
             </p>
           </div>
 
-          {/* Rationale Section: 심리학적 근거를 디자인 요소로 통합 */}
+          {/* Rationale Section */}
           <div className={`flex items-start gap-3.5 p-5 rounded-3xl border transition-colors ${
             quest.isAiGenerated 
               ? 'bg-indigo-50/50 border-indigo-100/50 text-indigo-900' 
@@ -107,6 +107,9 @@ const QuestCard: React.FC<Props> = ({ quest, onComplete }) => {
           </div>
         </div>
       </div>
+
+      {/* 맞춤형 광고 슬롯: 퀘스트 카드 아래 배치 */}
+      <AdSenseSlot type="banner" className="bg-white/40 border-dashed border-slate-200" />
     </motion.div>
   );
 };
