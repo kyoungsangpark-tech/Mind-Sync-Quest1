@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
 declare global {
@@ -13,18 +13,23 @@ interface Props {
 }
 
 const AdSenseSlot: React.FC<Props> = ({ type, className = "" }) => {
+  const adInjected = useRef(false);
+
   useEffect(() => {
-    // 0.5초 대기 후 광고 푸시 (컴포넌트 마운트 안정화 후)
+    // 광고가 이미 주입되었는지 확인하여 중복 푸시 방지
+    if (adInjected.current) return;
+
     const timeout = setTimeout(() => {
       try {
-        if (window.adsbygoogle) {
+        if (typeof window !== 'undefined' && window.adsbygoogle) {
           (window.adsbygoogle = window.adsbygoogle || []).push({});
-          console.debug(`[AdSense] Slot initialized: ${type}`);
+          adInjected.current = true;
+          console.debug(`[AdSense] Slot Rendered: ${type}`);
         }
       } catch (e) {
-        console.warn("[AdSense] Integration error or Adblocker active:", e);
+        console.warn("[AdSense] Component Error:", e);
       }
-    }, 500);
+    }, 700);
 
     return () => clearTimeout(timeout);
   }, [type]);
@@ -33,15 +38,15 @@ const AdSenseSlot: React.FC<Props> = ({ type, className = "" }) => {
 
   return (
     <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className={`relative w-full overflow-hidden rounded-[2rem] border border-slate-100 bg-white/50 backdrop-blur-sm flex flex-col items-center justify-center ${className} ${heightClass}`}
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className={`relative w-full overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-inner flex flex-col items-center justify-center ${className} ${heightClass}`}
     >
-      <div className="absolute top-2 left-4 flex items-center gap-1 opacity-20 z-0 pointer-events-none">
-        <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-400">Recommendation</span>
+      <div className="absolute top-2 left-4 flex items-center gap-1 opacity-30 z-0 pointer-events-none">
+        <span className="text-[7px] font-bold uppercase tracking-[0.2em] text-slate-400">Personalized Recommendation</span>
       </div>
       
-      {/* AdSense Unit */}
+      {/* Actual AdSense Unit */}
       <div className="w-full h-full min-w-[250px] flex items-center justify-center z-10">
         <ins className="adsbygoogle"
              style={{ display: 'block', width: '100%', height: '100%' }}
@@ -51,10 +56,15 @@ const AdSenseSlot: React.FC<Props> = ({ type, className = "" }) => {
              data-full-width-responsive="true"></ins>
       </div>
 
-      <div className="absolute inset-0 flex items-center justify-center -z-10 pointer-events-none">
-        <div className="flex flex-col items-center gap-2">
-          <div className="w-8 h-8 rounded-full border-2 border-slate-100 border-t-slate-200 animate-spin" />
-          <p className="text-[10px] text-slate-300 font-medium">Matching your context...</p>
+      {/* Placeholder UI while loading or if ad is blocked */}
+      <div className="absolute inset-0 flex items-center justify-center -z-10 pointer-events-none bg-slate-50/50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-indigo-200 animate-bounce" style={{ animationDelay: '0s' }}></div>
+            <div className="w-1.5 h-1.5 rounded-full bg-indigo-200 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            <div className="w-1.5 h-1.5 rounded-full bg-indigo-200 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+          </div>
+          <p className="text-[9px] text-slate-300 font-bold uppercase tracking-widest">Optimizing for ${type}</p>
         </div>
       </div>
     </motion.div>
